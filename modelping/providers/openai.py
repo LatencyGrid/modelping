@@ -25,10 +25,12 @@ class OpenAIProvider(BaseProvider):
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        # o3/o1 series uses max_completion_tokens instead of max_tokens
+        tokens_key = "max_completion_tokens" if model.startswith(("o1", "o3")) else "max_tokens"
         payload = {
             "model": model,
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_tokens,
+            tokens_key: max_tokens,
             "stream": True,
             "stream_options": {"include_usage": True},
         }

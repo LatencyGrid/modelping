@@ -56,9 +56,6 @@ STT_MODELS: dict[str, dict[str, Any]] = {
     # Groq Whisper
     "groq/whisper-large-v3": {"provider": "groq_stt", "model_id": "whisper-large-v3"},
     "groq/whisper-large-v3-turbo": {"provider": "groq_stt", "model_id": "whisper-large-v3-turbo"},
-    "groq/distil-whisper": {"provider": "groq_stt", "model_id": "distil-whisper-large-v3-en"},
-    # OpenAI Whisper
-    "openai/whisper-1": {"provider": "openai_stt", "model_id": "whisper-1"},
     "openai/gpt-4o-transcribe": {"provider": "openai_stt", "model_id": "gpt-4o-transcribe"},
     # Deepgram
     "deepgram/nova-2": {"provider": "deepgram_stt", "model_id": "nova-2"},

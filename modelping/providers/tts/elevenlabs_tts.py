@@ -9,7 +9,7 @@ import httpx
 from modelping.models import TTSRunResult
 from modelping.providers.tts.base import BaseTTSProvider
 
-DEFAULT_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel
+DEFAULT_VOICE_ID = "CwhRBWXzGAHq8TQ4Fs17"  # Roger (free premade voice)
 
 
 class ElevenLabsTTSProvider(BaseTTSProvider):
