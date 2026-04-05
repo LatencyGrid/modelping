@@ -5,14 +5,14 @@ build-backend = "hatchling.build"
 [project]
 name = "modelping"
 version = "0.1.0"
-description = "⚡ Latency benchmarks for LLM inference providers"
+description = "⚡ Benchmark LLM, STT, TTS, and full voice pipeline latency across every major AI provider"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "modelping contributors"},
+    {name = "LatencyGrid", email = "hello@latencygrid.dev"},
 ]
-keywords = ["llm", "latency", "benchmark", "ai", "inference"]
+keywords = ["llm", "latency", "benchmark", "ai", "inference", "tts", "stt", "voice-ai", "mlops", "openai", "anthropic"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
@@ -31,6 +32,11 @@ dependencies = [
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
+
+[project.urls]
+Homepage = "https://latencygrid.dev"
+Repository = "https://github.com/LatencyGrid/modelping"
+"Bug Tracker" = "https://github.com/LatencyGrid/modelping/issues"
 
 [project.scripts]
 modelping = "modelping.cli:app"
