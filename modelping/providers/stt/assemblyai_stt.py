@@ -43,7 +43,7 @@ class AssemblyAISTTProvider(BaseSTTProvider):
                 upload_url = upload_resp.json()["upload_url"]
 
                 # Step 2: Submit transcription
-                payload: dict = {"audio_url": upload_url}
+                payload: dict = {"audio_url": upload_url, "language_code": "en"}
                 if model != "default":
                     payload["speech_models"] = [model]
                 submit_resp = await client.post(

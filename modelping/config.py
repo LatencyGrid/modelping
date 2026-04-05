@@ -61,8 +61,8 @@ STT_MODELS: dict[str, dict[str, Any]] = {
     "deepgram/nova-2": {"provider": "deepgram_stt", "model_id": "nova-2"},
     "deepgram/nova-3": {"provider": "deepgram_stt", "model_id": "nova-3"},
     # AssemblyAI
-    "assemblyai/best": {"provider": "assemblyai_stt", "model_id": "best"},
-    "assemblyai/nano": {"provider": "assemblyai_stt", "model_id": "nano"},
+    "assemblyai/universal-3-pro": {"provider": "assemblyai_stt", "model_id": "universal-3-pro"},
+    "assemblyai/universal-2": {"provider": "assemblyai_stt", "model_id": "universal-2"},
     # Gladia
     "gladia/default": {"provider": "gladia_stt", "model_id": "default"},
 }
