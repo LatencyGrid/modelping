@@ -78,7 +78,11 @@ class AnthropicProvider(BaseProvider):
             total_ms = (time.perf_counter() - start) * 1000
 
         except httpx.HTTPStatusError as e:
-            return self._error_result(model, f"HTTP {e.response.status_code}: {e.response.text[:200]}")
+            try:
+                detail = e.response.text[:200]
+            except Exception:
+                detail = str(e.response.status_code)
+            return self._error_result(model, f"HTTP {e.response.status_code}: {detail}")
         except Exception as e:
             return self._error_result(model, str(e))
 

@@ -22,14 +22,16 @@ MODELS: dict[str, dict[str, Any]] = {
     "gpt-4o-mini": {"provider": "openai", "input_cost": 0.15, "output_cost": 0.60},
     "o3-mini": {"provider": "openai", "input_cost": 1.10, "output_cost": 4.40},
     # Anthropic
-    "claude-3-5-sonnet-20241022": {"provider": "anthropic", "input_cost": 3.00, "output_cost": 15.00},
-    "claude-3-haiku-20240307": {"provider": "anthropic", "input_cost": 0.25, "output_cost": 1.25},
+    "claude-sonnet-4-5-20250929": {"provider": "anthropic", "input_cost": 3.00, "output_cost": 15.00},
+    "claude-haiku-4-5-20251001": {"provider": "anthropic", "input_cost": 0.25, "output_cost": 1.25},
     # Google
     "gemini-2.0-flash": {"provider": "google", "input_cost": 0.10, "output_cost": 0.40},
     "gemini-1.5-pro": {"provider": "google", "input_cost": 1.25, "output_cost": 5.00},
     # Groq
     "llama-3.3-70b-versatile": {"provider": "groq", "input_cost": 0.59, "output_cost": 0.79},
-    "mixtral-8x7b-32768": {"provider": "groq", "input_cost": 0.24, "output_cost": 0.24},
+    "llama-3.1-8b-instant": {"provider": "groq", "input_cost": 0.05, "output_cost": 0.08},
+    "meta-llama/llama-4-scout-17b-16e-instruct": {"provider": "groq", "input_cost": 0.11, "output_cost": 0.34},
+    "moonshotai/kimi-k2-instruct": {"provider": "groq", "input_cost": 1.00, "output_cost": 3.00},
     # Fireworks
     "accounts/fireworks/models/llama-v3p1-70b-instruct": {
         "provider": "fireworks",

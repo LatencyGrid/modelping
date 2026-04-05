@@ -256,7 +256,7 @@ def stt_cmd(
     table.add_column("Provider/Model", style="bold")
     table.add_column("Latency", justify="right")
     table.add_column("Audio Dur", justify="right")
-    table.add_column("RTF", justify="right", help="Real-time factor (latency/audio)")
+    table.add_column("RTF", justify="right")
     table.add_column("Words", justify="right")
     table.add_column("Status")
 
@@ -352,7 +352,7 @@ def tts_cmd(
     table.add_column("TTFB", justify="right")
     table.add_column("Total", justify="right")
     table.add_column("Audio Dur", justify="right")
-    table.add_column("RTF", justify="right", help="audio_duration / total_ms (>1 = faster than real-time)")
+    table.add_column("RTF", justify="right")
     table.add_column("Status")
 
     for r in results:

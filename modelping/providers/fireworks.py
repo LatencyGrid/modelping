@@ -73,7 +73,7 @@ class FireworksProvider(BaseProvider):
             total_ms = (time.perf_counter() - start) * 1000
 
         except httpx.HTTPStatusError as e:
-            return self._error_result(model, f"HTTP {e.response.status_code}: {e.response.text[:200]}")
+            return self._error_result(model, f"HTTP {e.response.status_code}")
         except Exception as e:
             return self._error_result(model, str(e))
 

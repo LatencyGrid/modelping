@@ -82,7 +82,7 @@ class GladiaSTTProvider(BaseSTTProvider):
         except httpx.HTTPStatusError as e:
             return self._error_result(
                 model, audio_duration_ms,
-                f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+                f"HTTP {e.response.status_code}"
             )
         except Exception as e:
             return self._error_result(model, audio_duration_ms, str(e))

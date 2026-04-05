@@ -102,9 +102,10 @@ def render_table(
             reverse=False,  # higher throughput = better = green
         )
 
+        valid_ttft = [v for v in ttft_p50s if v != float("inf")]
         ttft50_color = _color_by_rank(
-            [v for v in ttft_p50s if v != float("inf")],
-            [j for j, v in enumerate(ttft_p50s) if v != float("inf") and results[j].ttft_p50 == r.ttft_p50][0] if any(results[j].ttft_p50 == r.ttft_p50 for j in range(len(results))) else 0,
+            valid_ttft,
+            valid_ttft.index(r.ttft_p50) if r.ttft_p50 in valid_ttft else 0,
             reverse=True,
         )
 

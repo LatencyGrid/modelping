@@ -50,7 +50,7 @@ class OpenAITTSProvider(BaseTTSProvider):
         except httpx.HTTPStatusError as e:
             return self._error_result(
                 model, len(text),
-                f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+                f"HTTP {e.response.status_code}"
             )
         except Exception as e:
             return self._error_result(model, len(text), str(e))
