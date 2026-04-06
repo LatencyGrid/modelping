@@ -2,7 +2,7 @@ name: Run Benchmarks
 
 on:
   schedule:
-    - cron: '0 10 * * 1'  # Every Monday at 10am UTC
+    - cron: '0 10 * * *'  # Every day at 10am UTC
   workflow_dispatch:        # Manual trigger
 
 jobs:
@@ -41,6 +41,15 @@ jobs:
 
       - name: Bundle and submit results
         run: python3 .github/scripts/bundle_and_submit.py
+
+      - name: Verify submission
+        run: |
+          python3 -c "
+          import requests
+          r = requests.get('https://api.latencygrid.dev/results')
+          d = r.json()
+          print(f'Leaderboard has {d[\"count\"]} submissions')
+          "
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
