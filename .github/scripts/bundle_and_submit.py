@@ -18,7 +18,7 @@ except:
 
 bundle = {
     'region': 'us-east',
-    'location': 'US East (Azure)',
+    'location': 'US East',
     'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
     'modelping_version': '0.1.0',
     'llm': llm,
