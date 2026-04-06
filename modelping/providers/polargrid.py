@@ -22,14 +22,12 @@ from modelping.providers.base import BaseProvider
 AUTH_URL = "https://api.polargrid.ai/v1/auth/token"
 
 # Default region — Toronto (your live node)
-DEFAULT_REGION = "tor-01"
+DEFAULT_REGION = "yto-01"
 
 REGION_URLS = {
-    "tor-01": "https://api.tor-01.edge.polargrid.ai:55111",
-    "yvr-01": "https://api.yvr-01.edge.polargrid.ai:55111",
-    "ymq-01": "https://api.ymq-01.edge.polargrid.ai:55111",
-    "was-01": "https://api.was-01.edge.polargrid.ai:55111",
-    "yto-01": "https://api.yto-01.edge.polargrid.ai:55111",
+    "yto-01": "https://api.yto-01.edge.polargrid.ai:55111",  # Toronto
+    "yvr-02": "https://api.yvr-02.edge.polargrid.ai:55111",  # Vancouver
+    "yul-01": "https://api.yul-01.edge.polargrid.ai:55111",  # Montreal
 }
 
 # Simple in-process JWT cache (per api_key)
