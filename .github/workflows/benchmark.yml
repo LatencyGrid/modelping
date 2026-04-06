@@ -50,6 +50,7 @@ jobs:
           retention-days: 90
 
       - name: Commit results to repo
+        continue-on-error: true
         run: |
           git config user.email "hello@latencygrid.dev"
           git config user.name "LatencyGrid Bot"
