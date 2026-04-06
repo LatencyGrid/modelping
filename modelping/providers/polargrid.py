@@ -1,6 +1,9 @@
 """PolarGrid provider — OpenAI-compatible edge inference API.
 
-Base URL: https://api.{region}.edge.polargrid.ai:55111
+Auth flow (per Sev, 2026-04-06):
+  1. Exchange API key for JWT: POST api.polargrid.ai/v1/auth/token
+  2. Use JWT as Bearer token against edge nodes: https://api.{node}.edge.polargrid.ai:55111
+
 Supports: LLM chat completions, STT, TTS (same endpoint shapes as OpenAI)
 """
 
@@ -8,11 +11,15 @@ from __future__ import annotations
 
 import json
 import time
+import threading
 
 import httpx
 
 from modelping.models import RunResult
 from modelping.providers.base import BaseProvider
+
+# Central auth endpoint
+AUTH_URL = "https://api.polargrid.ai/v1/auth/token"
 
 # Default region — Toronto (your live node)
 DEFAULT_REGION = "tor-01"
@@ -22,7 +29,35 @@ REGION_URLS = {
     "yvr-01": "https://api.yvr-01.edge.polargrid.ai:55111",
     "ymq-01": "https://api.ymq-01.edge.polargrid.ai:55111",
     "was-01": "https://api.was-01.edge.polargrid.ai:55111",
+    "yto-01": "https://api.yto-01.edge.polargrid.ai:55111",
 }
+
+# Simple in-process JWT cache (per api_key)
+_jwt_cache: dict[str, tuple[str, float]] = {}
+_jwt_lock = threading.Lock()
+JWT_TTL = 55 * 60  # 55 min — refresh before typical 60 min expiry
+
+
+def _get_jwt(api_key: str) -> str:
+    """Exchange API key for a JWT, with in-process caching."""
+    now = time.time()
+    with _jwt_lock:
+        cached = _jwt_cache.get(api_key)
+        if cached and now < cached[1]:
+            return cached[0]
+
+    resp = httpx.post(
+        AUTH_URL,
+        json={"api_key": api_key},
+        timeout=10.0,
+    )
+    resp.raise_for_status()
+    jwt = resp.json()["token"]
+
+    with _jwt_lock:
+        _jwt_cache[api_key] = (jwt, now + JWT_TTL)
+
+    return jwt
 
 
 class PolarGridProvider(BaseProvider):
@@ -38,8 +73,13 @@ class PolarGridProvider(BaseProvider):
         if not api_key:
             return self._error_result(model, "POLARGRID_API_KEY not set")
 
+        try:
+            jwt = _get_jwt(api_key)
+        except Exception as e:
+            return self._error_result(model, f"JWT exchange failed: {e}")
+
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {jwt}",
             "Content-Type": "application/json",
         }
         payload = {
