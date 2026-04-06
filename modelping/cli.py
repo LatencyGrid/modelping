@@ -202,6 +202,7 @@ def stt_cmd(
     audio: Optional[str] = typer.Option(
         None, "--audio", help="Path to audio file (WAV). Defaults to built-in test audio."
     ),
+    output_json: bool = typer.Option(False, "--json", help="Output results as JSON."),
 ) -> None:
     """Benchmark Speech-to-Text providers."""
     from modelping.providers.stt import get_stt_provider
@@ -253,6 +254,46 @@ def stt_cmd(
 
     results = asyncio.run(_run())
 
+    if output_json:
+        import statistics
+        # P50 aggregation: one entry per model with median latency across runs
+        from collections import defaultdict
+        model_groups: dict = defaultdict(list)
+        for r in results:
+            if not r.error:
+                model_groups[r.model].append(r)
+        aggregated = []
+        for model_key, runs_list in model_groups.items():
+            latencies = [r.transcription_latency_ms for r in runs_list]
+            rep = runs_list[0]
+            aggregated.append({
+                "provider": rep.provider,
+                "model": rep.model,
+                "audio_duration_ms": rep.audio_duration_ms,
+                "transcription_latency_ms": statistics.median(latencies),
+                "ttft_ms": rep.ttft_ms,
+                "word_count": rep.word_count,
+                "timestamp": rep.timestamp.isoformat(),
+                "error": None,
+            })
+        # Also include errored models (with no aggregation)
+        errored_models = {r.model for r in results if r.error}
+        for model_key in errored_models:
+            if model_key not in model_groups:
+                err_r = next(r for r in results if r.model == model_key and r.error)
+                aggregated.append({
+                    "provider": err_r.provider,
+                    "model": err_r.model,
+                    "audio_duration_ms": err_r.audio_duration_ms,
+                    "transcription_latency_ms": 0,
+                    "ttft_ms": None,
+                    "word_count": 0,
+                    "timestamp": err_r.timestamp.isoformat(),
+                    "error": err_r.error,
+                })
+        print(json.dumps(aggregated))
+        return
+
     # Render table
     table = Table(title="STT Benchmark Results", show_lines=False)
     table.add_column("Provider/Model", style="bold")
@@ -298,6 +339,7 @@ def tts_cmd(
     text: str = typer.Option(
         TTS_DEFAULT_TEXT, "--text", "-t", help="Text to synthesize."
     ),
+    output_json: bool = typer.Option(False, "--json", help="Output results as JSON."),
 ) -> None:
     """Benchmark Text-to-Speech providers."""
     from modelping.providers.tts import get_tts_provider
@@ -347,6 +389,47 @@ def tts_cmd(
         return all_results
 
     results = asyncio.run(_run())
+
+    if output_json:
+        import statistics
+        from collections import defaultdict
+        model_groups: dict = defaultdict(list)
+        for r in results:
+            if not r.error:
+                model_groups[r.model].append(r)
+        aggregated = []
+        for model_key, runs_list in model_groups.items():
+            ttfb_values = [r.ttfb_ms for r in runs_list]
+            rep = runs_list[0]
+            aggregated.append({
+                "provider": rep.provider,
+                "model": rep.model,
+                "text_chars": rep.text_chars,
+                "ttfb_ms": statistics.median(ttfb_values),
+                "total_ms": statistics.median([r.total_ms for r in runs_list]),
+                "audio_duration_ms": statistics.median([r.audio_duration_ms for r in runs_list]),
+                "realtime_factor": statistics.median([r.realtime_factor for r in runs_list]),
+                "timestamp": rep.timestamp.isoformat(),
+                "error": None,
+            })
+        # Include errored models
+        errored_models = {r.model for r in results if r.error}
+        for model_key in errored_models:
+            if model_key not in model_groups:
+                err_r = next(r for r in results if r.model == model_key and r.error)
+                aggregated.append({
+                    "provider": err_r.provider,
+                    "model": err_r.model,
+                    "text_chars": err_r.text_chars,
+                    "ttfb_ms": 0,
+                    "total_ms": 0,
+                    "audio_duration_ms": 0,
+                    "realtime_factor": 0,
+                    "timestamp": err_r.timestamp.isoformat(),
+                    "error": err_r.error,
+                })
+        print(json.dumps(aggregated))
+        return
 
     # Render table
     table = Table(title="TTS Benchmark Results", show_lines=False)
