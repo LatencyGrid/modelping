@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 import time
+from datetime import datetime
 from typing import List, Optional
 
 import typer
@@ -498,6 +500,59 @@ def pipeline_cmd(
         console.print(
             f"  [dim]({fastest.stt_model} + {fastest.llm_model} + {fastest.tts_model})[/dim]"
         )
+
+
+@app.command("submit")
+def submit_cmd(
+    region: str = typer.Option(..., "--region", "-r", help="Region identifier (e.g. us-east, eu-west, canada)"),
+    location: str = typer.Option(..., "--location", "-l", help="Human-readable location (e.g. 'New York, USA')"),
+    email: Optional[str] = typer.Option(None, "--email", "-e", help="Optional email for notifications"),
+    api_url: str = typer.Option("https://api.latencygrid.dev", "--api-url", hidden=True),
+) -> None:
+    """Submit benchmark results to the LatencyGrid community leaderboard.
+
+    Pipe modelping JSON output:
+
+        modelping run --all --json | modelping submit --region us-east --location "New York, USA"
+    """
+    import httpx
+
+    data = sys.stdin.read()
+    try:
+        results = json.loads(data)
+    except json.JSONDecodeError:
+        console.print("[red]Error: invalid JSON on stdin[/red]")
+        console.print("[dim]Pipe the output of: modelping run --all --json[/dim]")
+        raise typer.Exit(1)
+
+    payload: dict = {
+        "region": region,
+        "location": location,
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "modelping_version": "0.1.0",
+        "llm": results if isinstance(results, list) else [],
+    }
+    if email:
+        payload["email"] = email
+
+    console.print(f"[dim]Submitting to LatencyGrid...[/dim]")
+
+    async def post() -> dict:
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.post(f"{api_url}/submit", json=payload)
+            return r.json()
+
+    try:
+        result = asyncio.run(post())
+    except Exception as exc:
+        console.print(f"[red]Network error:[/red] {exc}")
+        raise typer.Exit(1)
+
+    if result.get("success"):
+        console.print(f"[green]✓ Submitted![/green] View at: {result.get('url')}")
+    else:
+        console.print(f"[red]Failed:[/red] {result.get('error', result)}")
+        raise typer.Exit(1)
 
 
 def main() -> None:
