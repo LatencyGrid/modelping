@@ -53,7 +53,7 @@ cp .env.example .env
 modelping pipeline --stt groq-whisper-large-v3 --llm llama-3.3-70b-versatile --tts cartesia-sonic-2
 
 # Benchmark LLMs head-to-head
-modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.0-flash
+modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.5-flash
 
 # Benchmark STT providers
 modelping stt
@@ -85,7 +85,7 @@ $ modelping pipeline --stt groq-whisper-large-v3 --llm llama-3.3-70b-versatile -
 ### LLM
 
 ```
-$ modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.0-flash llama-3.3-70b-versatile
+$ modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.5-flash llama-3.3-70b-versatile
 
 ╭─────────────────────────────────────────────────────────────────────────────────╮
 │  modelping  •  5 runs  •  prompt: 64 tokens                                     │
@@ -94,7 +94,7 @@ $ modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.0-flash llama-3.3-70b
  Model                          Provider     TTFT P50   TTFT P95   Tok/s   Cost/1M
  ─────────────────────────────────────────────────────────────────────────────────
  llama-3.3-70b-versatile        groq           42ms       67ms    312.4     $0.79
- gemini-2.0-flash               google         89ms      134ms    143.2     $0.40
+ gemini-2.5-flash               google        936ms     1100ms     45.2     $0.60
  claude-3-5-sonnet-20241022     anthropic     198ms      234ms     71.1    $15.00
  gpt-4o                         openai        312ms      489ms     82.3    $10.00
 
@@ -138,7 +138,7 @@ $ modelping tts --runs 3
 
 ```bash
 # LLM benchmarks
-modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.0-flash
+modelping run gpt-4o claude-3-5-sonnet-20241022 gemini-2.5-flash
 modelping run --all
 modelping run --provider groq
 modelping run gpt-4o --runs 10
@@ -182,8 +182,7 @@ modelping models --provider anthropic
 | o3-mini | openai | $1.10 | $4.40 |
 | claude-3-5-sonnet-20241022 | anthropic | $3.00 | $15.00 |
 | claude-3-haiku-20240307 | anthropic | $0.25 | $1.25 |
-| gemini-2.0-flash | google | $0.10 | $0.40 |
-| gemini-1.5-pro | google | $1.25 | $5.00 |
+| gemini-2.5-flash | google | $0.15 | $0.60 |
 | llama-3.3-70b-versatile | groq | $0.59 | $0.79 |
 | mixtral-8x7b-32768 | groq | $0.24 | $0.24 |
 | accounts/fireworks/models/llama-v3p1-70b-instruct | fireworks | $0.90 | $0.90 |
