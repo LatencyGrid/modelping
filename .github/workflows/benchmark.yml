@@ -1,0 +1,173 @@
+name: Run Benchmarks
+
+on:
+  schedule:
+    - cron: '0 10 * * 1'  # Every Monday at 10am UTC
+  workflow_dispatch:        # Manual trigger anytime
+
+jobs:
+  benchmark-us-east:
+    runs-on: ubuntu-latest  # GitHub's Azure East US datacenter
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      DEEPGRAM_API_KEY: ${{ secrets.DEEPGRAM_API_KEY }}
+      ASSEMBLYAI_API_KEY: ${{ secrets.ASSEMBLYAI_API_KEY }}
+      GLADIA_API_KEY: ${{ secrets.GLADIA_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+      CARTESIA_API_KEY: ${{ secrets.CARTESIA_API_KEY }}
+      FISH_AUDIO_API_KEY: ${{ secrets.FISH_AUDIO_API_KEY }}
+      LMNT_API_KEY: ${{ secrets.LMNT_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install modelping
+        run: pip install -e .
+
+      - name: Run LLM benchmarks
+        run: modelping run --all --runs 5 --json > llm-results.json
+
+      - name: Run STT benchmarks
+        run: |
+          python -c "
+          import asyncio, json, os, time
+          from modelping.config import STT_MODELS, get_stt_api_key
+          from modelping.providers.stt.groq_stt import GroqSTTProvider
+          from modelping.providers.stt.openai_stt import OpenAISTTProvider
+          from modelping.providers.stt.deepgram_stt import DeepgramSTTProvider
+          from modelping.providers.stt.assemblyai_stt import AssemblyAISTTProvider
+          from modelping.providers.stt.gladia_stt import GladiaSTTProvider
+          from modelping.utils.audio import get_test_audio_path
+
+          PROVIDER_MAP = {
+              'groq_stt': GroqSTTProvider,
+              'openai_stt': OpenAISTTProvider,
+              'deepgram_stt': DeepgramSTTProvider,
+              'assemblyai_stt': AssemblyAISTTProvider,
+              'gladia_stt': GladiaSTTProvider,
+          }
+
+          async def run():
+              audio = get_test_audio_path()
+              results = []
+              for key, cfg in STT_MODELS.items():
+                  p_name = cfg['provider']
+                  if not get_stt_api_key(p_name):
+                      continue
+                  cls = PROVIDER_MAP.get(p_name)
+                  if not cls:
+                      continue
+                  provider = cls()
+                  runs = []
+                  for _ in range(3):
+                      r = await provider.transcribe(audio, cfg['model_id'])
+                      if not r.error:
+                          runs.append(r.transcription_latency_ms)
+                  if runs:
+                      results.append({'model': key, 'provider': p_name, 'latency_p50': sorted(runs)[len(runs)//2]})
+              print(json.dumps(results))
+
+          print(asyncio.run(run()))
+          " > stt-results.json
+
+      - name: Run TTS benchmarks
+        run: |
+          python -c "
+          import asyncio, json
+          from modelping.config import TTS_MODELS, get_tts_api_key, TTS_DEFAULT_TEXT
+          from modelping.providers.tts.elevenlabs_tts import ElevenLabsTTSProvider
+          from modelping.providers.tts.cartesia_tts import CartesiaTTSProvider
+          from modelping.providers.tts.openai_tts import OpenAITTSProvider
+          from modelping.providers.tts.deepgram_tts import DeepgramTTSProvider
+          from modelping.providers.tts.fish_audio_tts import FishAudioTTSProvider
+          from modelping.providers.tts.lmnt_tts import LMNTTTSProvider
+
+          PROVIDER_MAP = {
+              'elevenlabs_tts': ElevenLabsTTSProvider,
+              'cartesia_tts': CartesiaTTSProvider,
+              'openai_tts': OpenAITTSProvider,
+              'deepgram_tts': DeepgramTTSProvider,
+              'fish_audio_tts': FishAudioTTSProvider,
+              'lmnt_tts': LMNTTTSProvider,
+          }
+
+          async def run():
+              results = []
+              for key, cfg in TTS_MODELS.items():
+                  p_name = cfg['provider']
+                  if not get_tts_api_key(p_name):
+                      continue
+                  cls = PROVIDER_MAP.get(p_name)
+                  if not cls:
+                      continue
+                  provider = cls()
+                  runs = []
+                  for _ in range(3):
+                      r = await provider.synthesize(TTS_DEFAULT_TEXT, cfg['model_id'])
+                      if not r.error:
+                          runs.append(r.ttfb_ms)
+                  if runs:
+                      results.append({'model': key, 'provider': p_name, 'ttfb_p50': sorted(runs)[len(runs)//2]})
+              print(json.dumps(results))
+
+          print(asyncio.run(run()))
+          " > tts-results.json
+
+      - name: Bundle results with metadata
+        run: |
+          python -c "
+          import json, datetime, platform, subprocess
+
+          region = 'us-east'  # GitHub Actions runs in Azure East US
+          timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
+
+          with open('llm-results.json') as f:
+              llm = json.load(f)
+          with open('stt-results.json') as f:
+              content = f.read().strip().split('\n')
+              stt = json.loads(content[-1]) if content else []
+          with open('tts-results.json') as f:
+              content = f.read().strip().split('\n')
+              tts = json.loads(content[-1]) if content else []
+
+          bundle = {
+              'region': region,
+              'location': 'US East (Azure)',
+              'timestamp': timestamp,
+              'modelping_version': '0.1.0',
+              'llm': llm,
+              'stt': stt,
+              'tts': tts,
+          }
+
+          with open('benchmark-results.json', 'w') as f:
+              json.dump(bundle, f, indent=2)
+
+          print(f'Bundled {len(llm)} LLM, {len(stt)} STT, {len(tts)} TTS results')
+          "
+
+      - name: Upload results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.run_id }}
+          path: benchmark-results.json
+          retention-days: 90
+
+      - name: Commit results to repo
+        run: |
+          git config user.email "hello@latencygrid.dev"
+          git config user.name "LatencyGrid Bot"
+          mkdir -p benchmark-data
+          cp benchmark-results.json benchmark-data/us-east-$(date +%Y-%m-%d).json
+          git add benchmark-data/
+          git diff --staged --quiet || git commit -m "data: benchmark results us-east $(date +%Y-%m-%d)"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
