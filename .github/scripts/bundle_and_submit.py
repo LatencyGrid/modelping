@@ -9,6 +9,13 @@ with open('stt-results.json') as f:
 with open('tts-results.json') as f:
     tts = json.load(f)
 
+pipeline = []
+try:
+    with open('pipeline-results.json') as f:
+        pipeline = json.load(f)
+except:
+    pass
+
 bundle = {
     'region': 'us-east',
     'location': 'US East (Azure)',
@@ -17,6 +24,7 @@ bundle = {
     'llm': llm,
     'stt': stt,
     'tts': tts,
+    'pipeline': pipeline,
 }
 
 with open('benchmark-results.json', 'w') as f:

@@ -2,7 +2,7 @@ name: Run Benchmarks
 
 on:
   schedule:
-    - cron: '0 10 * * *'  # Every day at 10am UTC
+    - cron: '0 12 * * *'  # Every day at 10am UTC
   workflow_dispatch:        # Manual trigger
 
 jobs:
@@ -38,6 +38,9 @@ jobs:
 
       - name: Run TTS benchmarks
         run: python3 .github/scripts/run_tts.py
+
+      - name: Run Pipeline benchmark
+        run: python3 .github/scripts/run_pipeline.py
 
       - name: Bundle and submit results
         run: python3 .github/scripts/bundle_and_submit.py
