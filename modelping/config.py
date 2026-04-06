@@ -50,6 +50,9 @@ MODELS: dict[str, dict[str, Any]] = {
     # Cohere
     "command-r-plus": {"provider": "cohere", "input_cost": 2.50, "output_cost": 10.00},
     "command-r": {"provider": "cohere", "input_cost": 0.15, "output_cost": 0.60},
+    # PolarGrid (edge inference)
+    "polargrid/llama-3.1-8b": {"provider": "polargrid", "input_cost": 0.00, "output_cost": 0.00},
+    "polargrid/llama-3.3-70b": {"provider": "polargrid", "input_cost": 0.00, "output_cost": 0.00},
 }
 
 STT_MODELS: dict[str, dict[str, Any]] = {
@@ -99,6 +102,7 @@ PROVIDER_KEY_ENV: dict[str, str] = {
     "together": "TOGETHER_API_KEY",
     "mistral": "MISTRAL_API_KEY",
     "cohere": "COHERE_API_KEY",
+    "polargrid": "POLARGRID_API_KEY",
 }
 
 STT_PROVIDER_KEY_ENV: dict[str, str] = {

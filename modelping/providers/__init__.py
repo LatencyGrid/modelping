@@ -9,6 +9,7 @@ from modelping.providers.fireworks import FireworksProvider
 from modelping.providers.together import TogetherProvider
 from modelping.providers.mistral import MistralProvider
 from modelping.providers.cohere import CohereProvider
+from modelping.providers.polargrid import PolarGridProvider
 
 PROVIDER_MAP: dict[str, type[BaseProvider]] = {
     "openai": OpenAIProvider,
@@ -19,6 +20,7 @@ PROVIDER_MAP: dict[str, type[BaseProvider]] = {
     "together": TogetherProvider,
     "mistral": MistralProvider,
     "cohere": CohereProvider,
+    "polargrid": PolarGridProvider,
 }
 
 
