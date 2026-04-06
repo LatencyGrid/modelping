@@ -26,7 +26,8 @@ MODELS: dict[str, dict[str, Any]] = {
     "claude-haiku-4-5-20251001": {"provider": "anthropic", "input_cost": 0.25, "output_cost": 1.25},
     # Google
     "gemini-2.0-flash": {"provider": "google", "input_cost": 0.10, "output_cost": 0.40},
-    "gemini-1.5-pro": {"provider": "google", "input_cost": 1.25, "output_cost": 5.00},
+    "gemini-2.5-flash": {"provider": "google", "input_cost": 0.15, "output_cost": 0.60},
+    "gemini-2.5-pro": {"provider": "google", "input_cost": 1.25, "output_cost": 10.00},
     # Groq
     "llama-3.3-70b-versatile": {"provider": "groq", "input_cost": 0.59, "output_cost": 0.79},
     "llama-3.1-8b-instant": {"provider": "groq", "input_cost": 0.05, "output_cost": 0.08},
