@@ -29,129 +29,133 @@ jobs:
           python-version: '3.11'
 
       - name: Install modelping
-        run: pip install -e .
+        run: pip install -e . -q
 
       - name: Run LLM benchmarks
-        run: modelping run --all --runs 5 --json > llm-results.json
+        run: |
+          modelping run --all --runs 5 --json 2>/dev/null > llm-results.json
+          echo "LLM results: $(python3 -c 'import json; d=json.load(open(\"llm-results.json\")); print(len(d), \"models\")')"
 
       - name: Run STT benchmarks
         run: |
-          python -c "
-          import asyncio, json, os, time
-          from modelping.config import STT_MODELS, get_stt_api_key
-          from modelping.providers.stt.groq_stt import GroqSTTProvider
-          from modelping.providers.stt.openai_stt import OpenAISTTProvider
-          from modelping.providers.stt.deepgram_stt import DeepgramSTTProvider
-          from modelping.providers.stt.assemblyai_stt import AssemblyAISTTProvider
-          from modelping.providers.stt.gladia_stt import GladiaSTTProvider
-          from modelping.utils.audio import get_test_audio_path
+          python3 - << 'PYEOF'
+import asyncio, json, sys
+sys.stderr = open('/dev/null', 'w')
+from modelping.config import STT_MODELS, get_stt_api_key
+from modelping.providers.stt.groq_stt import GroqSTTProvider
+from modelping.providers.stt.openai_stt import OpenAISTTProvider
+from modelping.providers.stt.deepgram_stt import DeepgramSTTProvider
+from modelping.providers.stt.assemblyai_stt import AssemblyAISTTProvider
+from modelping.providers.stt.gladia_stt import GladiaSTTProvider
+from modelping.utils.audio import get_test_audio_path
 
-          PROVIDER_MAP = {
-              'groq_stt': GroqSTTProvider,
-              'openai_stt': OpenAISTTProvider,
-              'deepgram_stt': DeepgramSTTProvider,
-              'assemblyai_stt': AssemblyAISTTProvider,
-              'gladia_stt': GladiaSTTProvider,
-          }
+PROVIDER_MAP = {
+    'groq_stt': GroqSTTProvider, 'openai_stt': OpenAISTTProvider,
+    'deepgram_stt': DeepgramSTTProvider, 'assemblyai_stt': AssemblyAISTTProvider,
+    'gladia_stt': GladiaSTTProvider,
+}
 
-          async def run():
-              audio = get_test_audio_path()
-              results = []
-              for key, cfg in STT_MODELS.items():
-                  p_name = cfg['provider']
-                  if not get_stt_api_key(p_name):
-                      continue
-                  cls = PROVIDER_MAP.get(p_name)
-                  if not cls:
-                      continue
-                  provider = cls()
-                  runs = []
-                  for _ in range(3):
-                      r = await provider.transcribe(audio, cfg['model_id'])
-                      if not r.error:
-                          runs.append(r.transcription_latency_ms)
-                  if runs:
-                      results.append({'model': key, 'provider': p_name, 'latency_p50': sorted(runs)[len(runs)//2]})
-              print(json.dumps(results))
+async def run():
+    audio = get_test_audio_path()
+    results = []
+    for key, cfg in STT_MODELS.items():
+        p_name = cfg['provider']
+        if not get_stt_api_key(p_name):
+            continue
+        cls = PROVIDER_MAP.get(p_name)
+        if not cls:
+            continue
+        runs = []
+        for _ in range(3):
+            r = await cls().transcribe(audio, cfg['model_id'])
+            if not r.error:
+                runs.append(r.transcription_latency_ms)
+        if runs:
+            results.append({'model': key, 'provider': p_name, 'latency_p50': sorted(runs)[len(runs)//2]})
+    return results
 
-          print(asyncio.run(run()))
-          " > stt-results.json
+with open('stt-results.json', 'w') as f:
+    json.dump(asyncio.run(run()), f)
+PYEOF
+          echo "STT results: $(python3 -c 'import json; d=json.load(open(\"stt-results.json\")); print(len(d), \"models\")')"
 
       - name: Run TTS benchmarks
         run: |
-          python -c "
-          import asyncio, json
-          from modelping.config import TTS_MODELS, get_tts_api_key, TTS_DEFAULT_TEXT
-          from modelping.providers.tts.elevenlabs_tts import ElevenLabsTTSProvider
-          from modelping.providers.tts.cartesia_tts import CartesiaTTSProvider
-          from modelping.providers.tts.openai_tts import OpenAITTSProvider
-          from modelping.providers.tts.deepgram_tts import DeepgramTTSProvider
-          from modelping.providers.tts.fish_audio_tts import FishAudioTTSProvider
-          from modelping.providers.tts.lmnt_tts import LMNTTTSProvider
+          python3 - << 'PYEOF'
+import asyncio, json, sys
+sys.stderr = open('/dev/null', 'w')
+from modelping.config import TTS_MODELS, get_tts_api_key, TTS_DEFAULT_TEXT
+from modelping.providers.tts.elevenlabs_tts import ElevenLabsTTSProvider
+from modelping.providers.tts.cartesia_tts import CartesiaTTSProvider
+from modelping.providers.tts.openai_tts import OpenAITTSProvider
+from modelping.providers.tts.deepgram_tts import DeepgramTTSProvider
+from modelping.providers.tts.fish_audio_tts import FishAudioTTSProvider
+from modelping.providers.tts.lmnt_tts import LMNTTTSProvider
 
-          PROVIDER_MAP = {
-              'elevenlabs_tts': ElevenLabsTTSProvider,
-              'cartesia_tts': CartesiaTTSProvider,
-              'openai_tts': OpenAITTSProvider,
-              'deepgram_tts': DeepgramTTSProvider,
-              'fish_audio_tts': FishAudioTTSProvider,
-              'lmnt_tts': LMNTTTSProvider,
-          }
+PROVIDER_MAP = {
+    'elevenlabs_tts': ElevenLabsTTSProvider, 'cartesia_tts': CartesiaTTSProvider,
+    'openai_tts': OpenAITTSProvider, 'deepgram_tts': DeepgramTTSProvider,
+    'fish_audio_tts': FishAudioTTSProvider, 'lmnt_tts': LMNTTTSProvider,
+}
 
-          async def run():
-              results = []
-              for key, cfg in TTS_MODELS.items():
-                  p_name = cfg['provider']
-                  if not get_tts_api_key(p_name):
-                      continue
-                  cls = PROVIDER_MAP.get(p_name)
-                  if not cls:
-                      continue
-                  provider = cls()
-                  runs = []
-                  for _ in range(3):
-                      r = await provider.synthesize(TTS_DEFAULT_TEXT, cfg['model_id'])
-                      if not r.error:
-                          runs.append(r.ttfb_ms)
-                  if runs:
-                      results.append({'model': key, 'provider': p_name, 'ttfb_p50': sorted(runs)[len(runs)//2]})
-              print(json.dumps(results))
+async def run():
+    results = []
+    for key, cfg in TTS_MODELS.items():
+        p_name = cfg['provider']
+        if not get_tts_api_key(p_name):
+            continue
+        cls = PROVIDER_MAP.get(p_name)
+        if not cls:
+            continue
+        runs = []
+        for _ in range(3):
+            r = await cls().synthesize(TTS_DEFAULT_TEXT, cfg['model_id'])
+            if not r.error:
+                runs.append(r.ttfb_ms)
+        if runs:
+            results.append({'model': key, 'provider': p_name, 'ttfb_p50': sorted(runs)[len(runs)//2]})
+    return results
 
-          print(asyncio.run(run()))
-          " > tts-results.json
+with open('tts-results.json', 'w') as f:
+    json.dump(asyncio.run(run()), f)
+PYEOF
+          echo "TTS results: $(python3 -c 'import json; d=json.load(open(\"tts-results.json\")); print(len(d), \"models\")')"
 
-      - name: Bundle results with metadata
+      - name: Bundle and submit results
         run: |
-          python -c "
-          import json, datetime, platform, subprocess
+          python3 - << 'PYEOF'
+import json, datetime, httpx, asyncio
 
-          region = 'us-east'  # GitHub Actions runs in Azure East US
-          timestamp = datetime.datetime.utcnow().isoformat() + 'Z'
+with open('llm-results.json') as f:
+    llm = json.load(f)
+with open('stt-results.json') as f:
+    stt = json.load(f)
+with open('tts-results.json') as f:
+    tts = json.load(f)
 
-          with open('llm-results.json') as f:
-              llm = json.load(f)
-          with open('stt-results.json') as f:
-              content = f.read().strip().split('\n')
-              stt = json.loads(content[-1]) if content else []
-          with open('tts-results.json') as f:
-              content = f.read().strip().split('\n')
-              tts = json.loads(content[-1]) if content else []
+bundle = {
+    'region': 'us-east',
+    'location': 'US East (Azure)',
+    'timestamp': datetime.datetime.utcnow().isoformat() + 'Z',
+    'modelping_version': '0.1.0',
+    'llm': llm,
+    'stt': stt,
+    'tts': tts,
+}
 
-          bundle = {
-              'region': region,
-              'location': 'US East (Azure)',
-              'timestamp': timestamp,
-              'modelping_version': '0.1.0',
-              'llm': llm,
-              'stt': stt,
-              'tts': tts,
-          }
+# Save locally
+with open('benchmark-results.json', 'w') as f:
+    json.dump(bundle, f, indent=2)
 
-          with open('benchmark-results.json', 'w') as f:
-              json.dump(bundle, f, indent=2)
+# Submit to leaderboard
+async def submit():
+    async with httpx.AsyncClient(timeout=30) as c:
+        r = await c.post('https://api.latencygrid.dev/submit', json=bundle)
+        return r.json()
 
-          print(f'Bundled {len(llm)} LLM, {len(stt)} STT, {len(tts)} TTS results')
-          "
+result = asyncio.run(submit())
+print('Submitted:', result)
+PYEOF
 
       - name: Upload results artifact
         uses: actions/upload-artifact@v4
