@@ -46,7 +46,7 @@ def _get_jwt(api_key: str) -> str:
 
     resp = httpx.post(
         AUTH_URL,
-        json={"api_key": api_key},
+        headers={"Authorization": f"Bearer {api_key}"},
         timeout=10.0,
     )
     resp.raise_for_status()
