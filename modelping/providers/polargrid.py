@@ -14,14 +14,12 @@ import httpx
 from modelping.models import RunResult
 from modelping.providers.base import BaseProvider
 
-# Default region — Toronto (your live node)
-DEFAULT_REGION = "tor-01"
+DEFAULT_REGION = "yvr-01"
 
 REGION_URLS = {
-    "tor-01": "https://api.tor-01.edge.polargrid.ai:55111",
     "yvr-01": "https://api.yvr-01.edge.polargrid.ai:55111",
-    "ymq-01": "https://api.ymq-01.edge.polargrid.ai:55111",
-    "was-01": "https://api.was-01.edge.polargrid.ai:55111",
+    "yul-01": "https://api.yul-01.edge.polargrid.ai:55111",
+    "yto-01": "https://api.yto-01.edge.polargrid.ai:55111",
 }
 
 
@@ -38,16 +36,35 @@ class PolarGridProvider(BaseProvider):
         if not api_key:
             return self._error_result(model, "POLARGRID_API_KEY not set")
 
+        # Exchange API key for JWT
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as auth_client:
+                auth_resp = await auth_client.post(
+                    "https://api.polargrid.ai/v1/auth/token",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                )
+                auth_resp.raise_for_status()
+                jwt = auth_resp.json()["token"]
+        except Exception as e:
+            return self._error_result(model, f"Auth failed: {e}")
+
         headers = {
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {jwt}",
             "Content-Type": "application/json",
+            "Accept": "text/event-stream",
         }
+        # Resolve actual model ID from config (e.g. "Llama-3.3-70B-Instruct")
+        from modelping.config import MODELS
+        model_cfg = MODELS.get(model, {})
+        api_model = model_cfg.get("model_id", model.removeprefix("polargrid/"))
         payload = {
-            "model": model,
+            "model": api_model,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
             "stream": True,
-            "stream_options": {"include_usage": True},
         }
 
         ttft_ms = 0.0
@@ -66,27 +83,35 @@ class PolarGridProvider(BaseProvider):
                     json=payload,
                 ) as response:
                     response.raise_for_status()
-                    async for line in response.aiter_lines():
-                        if not line.startswith("data: "):
-                            continue
-                        data = line[6:]
-                        if data == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data)
-                        except json.JSONDecodeError:
-                            continue
+                    buf = b""
+                    async for raw in response.aiter_bytes():
+                        buf += raw
+                        # Server sends literal \n\n (escaped) as SSE delimiter
+                        delim = b"\\n\\n" if b"\\n\\n" in buf else b"\n"
+                        while delim in buf:
+                            line_bytes, buf = buf.split(delim, 1)
+                            line = line_bytes.decode("utf-8", errors="replace").strip()
+                            if not line.startswith("data: "):
+                                continue
+                            data = line[6:]
+                            if data == "[DONE]":
+                                break
+                            try:
+                                chunk = json.loads(data)
+                            except json.JSONDecodeError:
+                                continue
 
-                        if not first_token:
+                            if not first_token:
+                                choices = chunk.get("choices", [])
+                                if choices and choices[0].get("delta", {}).get("content"):
+                                    ttft_ms = (time.perf_counter() - start) * 1000
+                                    first_token = True
+                                    tokens_generated += 1
+                                    continue
+
                             choices = chunk.get("choices", [])
                             if choices and choices[0].get("delta", {}).get("content"):
-                                ttft_ms = (time.perf_counter() - start) * 1000
-                                first_token = True
-
-                        if chunk.get("usage"):
-                            usage = chunk["usage"]
-                            tokens_generated = usage.get("completion_tokens", tokens_generated)
-                            input_tokens = usage.get("prompt_tokens", input_tokens)
+                                tokens_generated += 1
 
             total_ms = (time.perf_counter() - start) * 1000
 

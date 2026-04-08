@@ -71,6 +71,9 @@ def run_cmd(
         help="Exit 1 if any model's P95 TTFT exceeds this value (ms). Useful for CI.",
     ),
     max_tokens: int = typer.Option(100, "--max-tokens", help="Max tokens to generate."),
+    region: Optional[str] = typer.Option(
+        None, "--region", help="PolarGrid region (yvr-01, yul-01, yto-01)."
+    ),
 ) -> None:
     """Run latency benchmarks for one or more models."""
     # Determine which models to test
@@ -124,7 +127,7 @@ def run_cmd(
             f"[dim]Running {runs} × {len(target_models)} model(s) concurrently...[/dim]"
         )
 
-    results = asyncio.run(run_models(target_models, prompt, runs=runs, max_tokens=max_tokens))
+    results = asyncio.run(run_models(target_models, prompt, runs=runs, max_tokens=max_tokens, region=region))
     elapsed = time.perf_counter() - start
 
     if output_json:

@@ -24,11 +24,13 @@ PROVIDER_MAP: dict[str, type[BaseProvider]] = {
 }
 
 
-def get_provider(name: str) -> BaseProvider:
+def get_provider(name: str, region: str | None = None) -> BaseProvider:
     """Instantiate a provider by name."""
     cls = PROVIDER_MAP.get(name)
     if cls is None:
         raise ValueError(f"Unknown provider: {name}")
+    if name == "polargrid" and region:
+        return cls(region=region)
     return cls()
 
 
