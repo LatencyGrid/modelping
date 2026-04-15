@@ -28,7 +28,7 @@ class CartesiaTTSProvider(BaseTTSProvider):
             "Content-Type": "application/json",
         }
         payload = {
-            "model_id": model,
+            "model_id": self.resolve_model(model),
             "transcript": text,
             "voice": {
                 "mode": "id",
@@ -47,8 +47,8 @@ class CartesiaTTSProvider(BaseTTSProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", self.base_url, headers=headers, json=payload) as response:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
+                async with client.stream("POST", self.effective_base_url, headers=headers, json=payload) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes(chunk_size=4096):
                         if chunk and not first_chunk:

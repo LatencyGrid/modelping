@@ -71,6 +71,21 @@ def run_cmd(
         help="Exit 1 if any model's P95 TTFT exceeds this value (ms). Useful for CI.",
     ),
     max_tokens: int = typer.Option(100, "--max-tokens", help="Max tokens to generate."),
+    base_url: Optional[str] = typer.Option(
+        None,
+        "--base-url",
+        help="Override provider base URL. Point any provider at a local/custom server.",
+    ),
+    no_verify_ssl: bool = typer.Option(
+        False,
+        "--no-verify-ssl",
+        help="Skip TLS certificate verification (for self-signed certs).",
+    ),
+    model_id: Optional[str] = typer.Option(
+        None,
+        "--model-id",
+        help="Override the model name sent to the server (e.g. Meta-Llama-3.1-8B-Instruct).",
+    ),
 ) -> None:
     """Run latency benchmarks for one or more models."""
     # Determine which models to test
@@ -101,6 +116,12 @@ def run_cmd(
 
     # Filter to configured providers; warn about skipped ones
     configured = get_configured_providers()
+    if base_url:
+        # --base-url bypasses API key requirement for the target provider(s)
+        for m in target_models:
+            p = MODELS.get(m, {}).get("provider")
+            if p and p not in configured:
+                configured.append(p)
     skipped = [m for m in target_models if MODELS.get(m, {}).get("provider") not in configured]
     target_models = [m for m in target_models if MODELS.get(m, {}).get("provider") in configured]
 
@@ -124,7 +145,10 @@ def run_cmd(
             f"[dim]Running {runs} × {len(target_models)} model(s) concurrently...[/dim]"
         )
 
-    results = asyncio.run(run_models(target_models, prompt, runs=runs, max_tokens=max_tokens))
+    results = asyncio.run(run_models(
+        target_models, prompt, runs=runs, max_tokens=max_tokens,
+        base_url=base_url, verify_ssl=not no_verify_ssl, model_id=model_id,
+    ))
     elapsed = time.perf_counter() - start
 
     if output_json:
@@ -203,6 +227,18 @@ def stt_cmd(
         None, "--audio", help="Path to audio file (WAV). Defaults to built-in test audio."
     ),
     output_json: bool = typer.Option(False, "--json", help="Output results as JSON."),
+    base_url: Optional[str] = typer.Option(
+        None, "--base-url",
+        help="Override provider base URL. Point any provider at a local/custom server.",
+    ),
+    no_verify_ssl: bool = typer.Option(
+        False, "--no-verify-ssl",
+        help="Skip TLS certificate verification (for self-signed certs).",
+    ),
+    model_id: Optional[str] = typer.Option(
+        None, "--model-id",
+        help="Override the model name sent to the server.",
+    ),
 ) -> None:
     """Benchmark Speech-to-Text providers."""
     from modelping.providers.stt import get_stt_provider
@@ -223,7 +259,12 @@ def stt_cmd(
             err_console.print("[red]No STT providers configured. Set API keys in .env[/red]")
             raise typer.Exit(1)
 
-    # Filter unconfigured
+    # Filter unconfigured (--base-url bypasses key check)
+    if base_url:
+        for k in targets:
+            p = STT_MODELS.get(k, {}).get("provider")
+            if p and p not in configured_providers:
+                configured_providers.add(p)
     skipped = [k for k in targets if STT_MODELS[k]["provider"] not in configured_providers]
     targets = [k for k in targets if STT_MODELS[k]["provider"] in configured_providers]
 
@@ -245,7 +286,12 @@ def stt_cmd(
         all_results: list[STTRunResult] = []
         for model_key in targets:
             cfg = STT_MODELS[model_key]
-            provider = get_stt_provider(cfg["provider"])
+            provider = get_stt_provider(
+                cfg["provider"],
+                base_url=base_url,
+                verify_ssl=not no_verify_ssl,
+                model_id=model_id,
+            )
             for _ in range(runs):
                 r = await provider.transcribe(audio_path, cfg["model_id"])
                 r = r.model_copy(update={"model": model_key})  # use display key
@@ -340,6 +386,18 @@ def tts_cmd(
         TTS_DEFAULT_TEXT, "--text", "-t", help="Text to synthesize."
     ),
     output_json: bool = typer.Option(False, "--json", help="Output results as JSON."),
+    base_url: Optional[str] = typer.Option(
+        None, "--base-url",
+        help="Override provider base URL. Point any provider at a local/custom server.",
+    ),
+    no_verify_ssl: bool = typer.Option(
+        False, "--no-verify-ssl",
+        help="Skip TLS certificate verification (for self-signed certs).",
+    ),
+    model_id: Optional[str] = typer.Option(
+        None, "--model-id",
+        help="Override the model name sent to the server.",
+    ),
 ) -> None:
     """Benchmark Text-to-Speech providers."""
     from modelping.providers.tts import get_tts_provider
@@ -359,7 +417,12 @@ def tts_cmd(
             err_console.print("[red]No TTS providers configured. Set API keys in .env[/red]")
             raise typer.Exit(1)
 
-    # Filter unconfigured
+    # Filter unconfigured (--base-url bypasses key check)
+    if base_url:
+        for k in targets:
+            p = TTS_MODELS.get(k, {}).get("provider")
+            if p and p not in configured_providers:
+                configured_providers.add(p)
     skipped = [k for k in targets if TTS_MODELS[k]["provider"] not in configured_providers]
     targets = [k for k in targets if TTS_MODELS[k]["provider"] in configured_providers]
 
@@ -381,7 +444,12 @@ def tts_cmd(
         all_results: list[TTSRunResult] = []
         for model_key in targets:
             cfg = TTS_MODELS[model_key]
-            provider = get_tts_provider(cfg["provider"])
+            provider = get_tts_provider(
+                cfg["provider"],
+                base_url=base_url,
+                verify_ssl=not no_verify_ssl,
+                model_id=model_id,
+            )
             for _ in range(runs):
                 r = await provider.synthesize(text, cfg["model_id"])
                 r = r.model_copy(update={"model": model_key})  # use display key
@@ -478,6 +546,18 @@ def pipeline_cmd(
         None, "--tts", help="TTS model key, or 'all' for matrix. Default: cartesia/sonic-2"
     ),
     runs: int = typer.Option(1, "--runs", "-r", help="Number of runs per pipeline combination."),
+    base_url: Optional[str] = typer.Option(
+        None, "--base-url",
+        help="Override provider base URL. Point any provider at a local/custom server.",
+    ),
+    no_verify_ssl: bool = typer.Option(
+        False, "--no-verify-ssl",
+        help="Skip TLS certificate verification (for self-signed certs).",
+    ),
+    model_id: Optional[str] = typer.Option(
+        None, "--model-id",
+        help="Override the model name sent to the server.",
+    ),
 ) -> None:
     """
     Benchmark the full STT → LLM → TTS voice pipeline.
@@ -541,7 +621,10 @@ def pipeline_cmd(
         f"[dim]STT: {stt_models}  |  LLM: {llm_models}  |  TTS: {tts_models}[/dim]"
     )
 
-    results = asyncio.run(run_pipeline_matrix(stt_models, llm_models, tts_models, runs=runs))
+    results = asyncio.run(run_pipeline_matrix(
+        stt_models, llm_models, tts_models, runs=runs,
+        base_url=base_url, verify_ssl=not no_verify_ssl, model_id=model_id,
+    ))
 
     # Render table
     table = Table(show_lines=False)

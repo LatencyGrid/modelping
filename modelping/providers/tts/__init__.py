@@ -20,12 +20,20 @@ TTS_PROVIDER_MAP: dict[str, type[BaseTTSProvider]] = {
 }
 
 
-def get_tts_provider(name: str) -> BaseTTSProvider:
-    """Instantiate a TTS provider by name."""
+def get_tts_provider(
+    name: str,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
+) -> BaseTTSProvider:
+    """Instantiate a TTS provider by name, optionally applying CLI overrides."""
     cls = TTS_PROVIDER_MAP.get(name)
     if cls is None:
         raise ValueError(f"Unknown TTS provider: {name}")
-    return cls()
+    provider = cls()
+    provider.apply_overrides(base_url=base_url, verify_ssl=verify_ssl, model_id=model_id)
+    return provider
 
 
 __all__ = [

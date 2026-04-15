@@ -28,7 +28,7 @@ class OpenAIProvider(BaseProvider):
         # o3/o1 series uses max_completion_tokens instead of max_tokens
         tokens_key = "max_completion_tokens" if model.startswith(("o1", "o3")) else "max_tokens"
         payload = {
-            "model": model,
+            "model": self.resolve_model(model),
             "messages": [{"role": "user", "content": prompt}],
             tokens_key: max_tokens,
             "stream": True,
@@ -43,10 +43,10 @@ class OpenAIProvider(BaseProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.base_url}/chat/completions",
+                    f"{self.effective_base_url}/chat/completions",
                     headers=headers,
                     json=payload,
                 ) as response:

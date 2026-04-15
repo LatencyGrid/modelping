@@ -22,14 +22,14 @@ class ElevenLabsTTSProvider(BaseTTSProvider):
         if not api_key:
             return self._error_result(model, len(text), "ELEVENLABS_API_KEY not set")
 
-        url = f"{self.base_url}/{DEFAULT_VOICE_ID}/stream"
+        url = f"{self.effective_base_url}/{DEFAULT_VOICE_ID}/stream"
         headers = {
             "xi-api-key": api_key,
             "Content-Type": "application/json",
         }
         payload = {
             "text": text,
-            "model_id": model,
+            "model_id": self.resolve_model(model),
             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
         }
 
@@ -39,7 +39,7 @@ class ElevenLabsTTSProvider(BaseTTSProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes(chunk_size=1024):

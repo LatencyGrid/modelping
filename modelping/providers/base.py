@@ -16,6 +16,36 @@ class BaseProvider(ABC):
     name: str
     api_key_env: str
 
+    # CLI overrides — set via apply_overrides() before measure()
+    _base_url_override: str | None = None
+    _verify_ssl: bool = True
+    _model_id: str | None = None
+
+    def apply_overrides(
+        self,
+        base_url: str | None = None,
+        verify_ssl: bool = True,
+        model_id: str | None = None,
+    ) -> None:
+        """Apply CLI-level overrides to any provider."""
+        if base_url:
+            self._base_url_override = base_url.rstrip("/")
+        self._verify_ssl = verify_ssl
+        self._model_id = model_id
+
+    @property
+    def effective_base_url(self) -> str:
+        """Return CLI override URL if set, else provider default."""
+        if self._base_url_override:
+            return self._base_url_override
+        return getattr(self, "base_url", "")
+
+    def resolve_model(self, model: str) -> str:
+        """Return --model-id override if set, else the model name as-is."""
+        if self._model_id:
+            return self._model_id
+        return model
+
     def get_api_key(self) -> str | None:
         return get_api_key(self.name)
 

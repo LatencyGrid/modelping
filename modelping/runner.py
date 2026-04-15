@@ -18,6 +18,10 @@ async def run_model(
     runs: int = 5,
     max_tokens: int = 100,
     progress_callback: Callable[[str, int, int], None] | None = None,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
 ) -> AggregatedResult:
     """Run N iterations for a single model and return aggregated results."""
     model_cfg = MODELS.get(model)
@@ -39,7 +43,12 @@ async def run_model(
         )
 
     provider_name = model_cfg["provider"]
-    provider = get_provider(provider_name)
+    provider = get_provider(
+        provider_name,
+        base_url=base_url,
+        verify_ssl=verify_ssl,
+        model_id=model_id,
+    )
 
     results: list[RunResult] = []
     for i in range(runs):
@@ -57,10 +66,17 @@ async def run_models(
     runs: int = 5,
     max_tokens: int = 100,
     progress_callback: Callable[[str, int, int], None] | None = None,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
 ) -> list[AggregatedResult]:
     """Run all models concurrently and return aggregated results."""
     tasks = [
-        run_model(model, prompt, runs, max_tokens, progress_callback)
+        run_model(
+            model, prompt, runs, max_tokens, progress_callback,
+            base_url=base_url, verify_ssl=verify_ssl, model_id=model_id,
+        )
         for model in models
     ]
     results = await asyncio.gather(*tasks, return_exceptions=True)

@@ -30,12 +30,12 @@ class AssemblyAISTTProvider(BaseSTTProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 # Step 1: Upload audio
                 with open(audio_path, "rb") as f:
                     audio_data = f.read()
                 upload_resp = await client.post(
-                    f"{self.base_url}/upload",
+                    f"{self.effective_base_url}/upload",
                     headers={"authorization": api_key, "Content-Type": "application/octet-stream"},
                     content=audio_data,
                 )
@@ -45,9 +45,9 @@ class AssemblyAISTTProvider(BaseSTTProvider):
                 # Step 2: Submit transcription
                 payload: dict = {"audio_url": upload_url, "language_code": "en"}
                 if model != "default":
-                    payload["speech_models"] = [model]
+                    payload["speech_models"] = [self.resolve_model(model)]
                 submit_resp = await client.post(
-                    f"{self.base_url}/transcript",
+                    f"{self.effective_base_url}/transcript",
                     json=payload,
                     headers=headers,
                 )
@@ -63,7 +63,7 @@ class AssemblyAISTTProvider(BaseSTTProvider):
                         )
                     await asyncio.sleep(POLL_INTERVAL)
                     poll_resp = await client.get(
-                        f"{self.base_url}/transcript/{transcript_id}",
+                        f"{self.effective_base_url}/transcript/{transcript_id}",
                         headers=headers,
                     )
                     poll_resp.raise_for_status()
