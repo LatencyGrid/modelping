@@ -26,6 +26,10 @@ async def run_pipeline(
     stt_model_key: str,
     llm_model_key: str,
     tts_model_key: str,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
 ) -> PipelineRunResult:
     """
     Run a single STT → LLM → TTS pipeline benchmark.
@@ -54,22 +58,24 @@ async def run_pipeline(
     tts_provider_name = tts_cfg["provider"]
     tts_model_id = tts_cfg["model_id"]
 
-    # Check API keys
-    if not get_stt_api_key(stt_provider_name):
-        return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
-                               f"No API key for STT provider: {stt_provider_name}")
-    if not get_api_key(llm_provider_name):
-        return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
-                               f"No API key for LLM provider: {llm_provider_name}")
-    if not get_tts_api_key(tts_provider_name):
-        return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
-                               f"No API key for TTS provider: {tts_provider_name}")
+    # Check API keys (--base-url bypasses key check)
+    if not base_url:
+        if not get_stt_api_key(stt_provider_name):
+            return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
+                                   f"No API key for STT provider: {stt_provider_name}")
+        if not get_api_key(llm_provider_name):
+            return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
+                                   f"No API key for LLM provider: {llm_provider_name}")
+        if not get_tts_api_key(tts_provider_name):
+            return _error_pipeline(stt_model_key, llm_model_key, tts_model_key,
+                                   f"No API key for TTS provider: {tts_provider_name}")
 
+    override_kwargs = dict(base_url=base_url, verify_ssl=verify_ssl, model_id=model_id)
     audio_path = get_test_audio_path()
     pipeline_start = time.perf_counter()
 
     # ── Stage 1: STT ─────────────────────────────────────────────────────────
-    stt_provider = get_stt_provider(stt_provider_name)
+    stt_provider = get_stt_provider(stt_provider_name, **override_kwargs)
     stt_result = await stt_provider.transcribe(audio_path, stt_model_id)
 
     if stt_result.error:
@@ -82,7 +88,7 @@ async def run_pipeline(
     transcript = "The quick brown fox jumps over the lazy dog."  # Use fixed text for LLM
 
     # ── Stage 2: LLM ─────────────────────────────────────────────────────────
-    llm_provider = get_provider(llm_provider_name)
+    llm_provider = get_provider(llm_provider_name, **override_kwargs)
     llm_result = await llm_provider.measure(
         llm_model_key,
         f"Given this transcription: '{transcript}' — respond in one sentence.",
@@ -98,7 +104,7 @@ async def run_pipeline(
     llm_ttft_ms = llm_result.ttft_ms
 
     # ── Stage 3: TTS ─────────────────────────────────────────────────────────
-    tts_provider = get_tts_provider(tts_provider_name)
+    tts_provider = get_tts_provider(tts_provider_name, **override_kwargs)
     tts_result = await tts_provider.synthesize(TTS_DEFAULT_TEXT, tts_model_id)
 
     if tts_result.error:
@@ -130,6 +136,10 @@ async def run_pipeline_matrix(
     llm_models: list[str],
     tts_models: list[str],
     runs: int = 1,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
 ) -> list[PipelineRunResult]:
     """Run all combinations of STT × LLM × TTS pipelines."""
     results = []
@@ -137,7 +147,10 @@ async def run_pipeline_matrix(
         for llm in llm_models:
             for tts in tts_models:
                 for _ in range(runs):
-                    result = await run_pipeline(stt, llm, tts)
+                    result = await run_pipeline(
+                        stt, llm, tts,
+                        base_url=base_url, verify_ssl=verify_ssl, model_id=model_id,
+                    )
                     results.append(result)
     return results
 

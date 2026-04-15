@@ -12,6 +12,33 @@ class BaseTTSProvider(ABC):
     name: str
     api_key_env: str
 
+    # CLI overrides
+    _base_url_override: str | None = None
+    _verify_ssl: bool = True
+    _model_id: str | None = None
+
+    def apply_overrides(
+        self,
+        base_url: str | None = None,
+        verify_ssl: bool = True,
+        model_id: str | None = None,
+    ) -> None:
+        if base_url:
+            self._base_url_override = base_url.rstrip("/")
+        self._verify_ssl = verify_ssl
+        self._model_id = model_id
+
+    @property
+    def effective_base_url(self) -> str:
+        if self._base_url_override:
+            return self._base_url_override
+        return getattr(self, "base_url", "")
+
+    def resolve_model(self, model: str) -> str:
+        if self._model_id:
+            return self._model_id
+        return model
+
     def get_api_key(self) -> str | None:
         from modelping.config import get_tts_api_key
         return get_tts_api_key(self.name)

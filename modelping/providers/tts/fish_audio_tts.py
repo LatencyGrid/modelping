@@ -76,11 +76,11 @@ class FishAudioTTSProvider(BaseTTSProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 if content is not None:
-                    request = client.stream("POST", self.base_url, headers=headers, content=content)
+                    request = client.stream("POST", self.effective_base_url, headers=headers, content=content)
                 else:
-                    request = client.stream("POST", self.base_url, headers=headers, json=json_payload)
+                    request = client.stream("POST", self.effective_base_url, headers=headers, json=json_payload)
 
                 async with request as response:
                     response.raise_for_status()

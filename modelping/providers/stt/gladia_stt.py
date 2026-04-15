@@ -30,12 +30,12 @@ class GladiaSTTProvider(BaseSTTProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 # Step 1: Upload audio
                 with open(audio_path, "rb") as f:
                     audio_data = f.read()
                 upload_resp = await client.post(
-                    f"{self.base_url}/upload",
+                    f"{self.effective_base_url}/upload",
                     headers=headers,
                     files={"audio": ("audio.wav", audio_data, "audio/wav")},
                 )
@@ -44,7 +44,7 @@ class GladiaSTTProvider(BaseSTTProvider):
 
                 # Step 2: Submit pre-recorded transcription
                 submit_resp = await client.post(
-                    f"{self.base_url}/pre-recorded",
+                    f"{self.effective_base_url}/pre-recorded",
                     headers={**headers, "Content-Type": "application/json"},
                     json={"audio_url": audio_url},
                 )
@@ -59,7 +59,7 @@ class GladiaSTTProvider(BaseSTTProvider):
                         return self._error_result(model, audio_duration_ms, "Polling timeout exceeded")
                     await asyncio.sleep(POLL_INTERVAL)
                     # result_url may be a full URL or just an ID
-                    poll_url = result_url if result_url.startswith("http") else f"{self.base_url}/pre-recorded/{result_url}"
+                    poll_url = result_url if result_url.startswith("http") else f"{self.effective_base_url}/pre-recorded/{result_url}"
                     poll_resp = await client.get(poll_url, headers=headers)
                     poll_resp.raise_for_status()
                     poll_data = poll_resp.json()

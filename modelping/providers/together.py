@@ -26,7 +26,7 @@ class TogetherProvider(BaseProvider):
             "Content-Type": "application/json",
         }
         payload = {
-            "model": model,
+            "model": self.resolve_model(model),
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
             "stream": True,
@@ -40,10 +40,10 @@ class TogetherProvider(BaseProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 async with client.stream(
                     "POST",
-                    f"{self.base_url}/chat/completions",
+                    f"{self.effective_base_url}/chat/completions",
                     headers=headers,
                     json=payload,
                 ) as response:

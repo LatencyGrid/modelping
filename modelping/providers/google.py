@@ -22,7 +22,7 @@ class GoogleProvider(BaseProvider):
             return self._error_result(model, "GOOGLE_API_KEY not set")
 
         url = (
-            f"{self.base_url}/models/{model}:streamGenerateContent"
+            f"{self.effective_base_url}/models/{self.resolve_model(model)}:streamGenerateContent"
             f"?key={api_key}&alt=sse"
         )
         payload = {
@@ -38,7 +38,7 @@ class GoogleProvider(BaseProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 async with client.stream(
                     "POST",
                     url,

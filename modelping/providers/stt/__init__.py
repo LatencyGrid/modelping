@@ -16,12 +16,20 @@ STT_PROVIDER_MAP: dict[str, type[BaseSTTProvider]] = {
 }
 
 
-def get_stt_provider(name: str) -> BaseSTTProvider:
-    """Instantiate an STT provider by name."""
+def get_stt_provider(
+    name: str,
+    *,
+    base_url: str | None = None,
+    verify_ssl: bool = True,
+    model_id: str | None = None,
+) -> BaseSTTProvider:
+    """Instantiate an STT provider by name, optionally applying CLI overrides."""
     cls = STT_PROVIDER_MAP.get(name)
     if cls is None:
         raise ValueError(f"Unknown STT provider: {name}")
-    return cls()
+    provider = cls()
+    provider.apply_overrides(base_url=base_url, verify_ssl=verify_ssl, model_id=model_id)
+    return provider
 
 
 __all__ = [

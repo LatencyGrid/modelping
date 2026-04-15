@@ -25,14 +25,14 @@ class GroqSTTProvider(BaseSTTProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 with open(audio_path, "rb") as f:
                     audio_data = f.read()
                 response = await client.post(
-                    self.base_url,
+                    self.effective_base_url,
                     headers={"Authorization": f"Bearer {api_key}"},
                     files={"file": ("audio.wav", audio_data, "audio/wav")},
-                    data={"model": model, "response_format": "json"},
+                    data={"model": self.resolve_model(model), "response_format": "json"},
                 )
                 response.raise_for_status()
                 elapsed_ms = (time.perf_counter() - start) * 1000

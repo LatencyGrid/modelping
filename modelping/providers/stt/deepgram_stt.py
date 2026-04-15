@@ -25,11 +25,11 @@ class DeepgramSTTProvider(BaseSTTProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
                 with open(audio_path, "rb") as f:
                     audio_data = f.read()
                 response = await client.post(
-                    f"{self.base_url}?model={model}&smart_format=true",
+                    f"{self.effective_base_url}?model={self.resolve_model(model)}&smart_format=true",
                     headers={
                         "Authorization": f"Token {api_key}",
                         "Content-Type": "audio/wav",

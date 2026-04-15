@@ -40,7 +40,7 @@ class PlayHTTTSProvider(BaseTTSProvider):
             "text": text,
             "voice": "s3://voice-cloning-zero-shot/d9ff78ba-d016-47f6-b0ef-dd630f59414e/female-cs/manifest.json",
             "output_format": "mp3",
-            "voice_engine": model,
+            "voice_engine": self.resolve_model(model),
             "quality": "medium",
         }
 
@@ -50,8 +50,8 @@ class PlayHTTTSProvider(BaseTTSProvider):
 
         try:
             start = time.perf_counter()
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("POST", self.base_url, headers=headers, json=payload) as response:
+            async with httpx.AsyncClient(timeout=60.0, verify=self._verify_ssl) as client:
+                async with client.stream("POST", self.effective_base_url, headers=headers, json=payload) as response:
                     response.raise_for_status()
                     async for chunk in response.aiter_bytes(chunk_size=1024):
                         if chunk and not first_chunk:

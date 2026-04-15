@@ -2,8 +2,8 @@ name: Run Benchmarks
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # Every day at 10am UTC
-  workflow_dispatch:        # Manual trigger
+    - cron: "0 12 * * *" # Every day at 10am UTC
+  workflow_dispatch: # Manual trigger
 
 jobs:
   benchmark-us-east:
@@ -23,31 +23,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install modelping
-        run: pip install -e . -q
+        run: uv sync
 
       - name: Run LLM benchmarks
-        run: modelping run --all --runs 5 --json 2>/dev/null > llm-results.json
+        run: uv run modelping run --all --runs 5 --json 2>/dev/null > llm-results.json
 
       - name: Run STT benchmarks
-        run: python3 .github/scripts/run_stt.py
+        run: uv run python .github/scripts/run_stt.py
 
       - name: Run TTS benchmarks
-        run: python3 .github/scripts/run_tts.py
+        run: uv run python .github/scripts/run_tts.py
 
       - name: Run Pipeline benchmark
-        run: python3 .github/scripts/run_pipeline.py
+        run: uv run python .github/scripts/run_pipeline.py
 
       - name: Bundle and submit results
-        run: python3 .github/scripts/bundle_and_submit.py
+        run: uv run python .github/scripts/bundle_and_submit.py
 
       - name: Verify submission
         run: |
-          python3 -c "
+          uv run python -c "
           import requests
           r = requests.get('https://api.latencygrid.dev/results')
           d = r.json()

@@ -15,12 +15,12 @@ One tool. Every provider. The metrics that actually matter.
 
 ## What It Measures
 
-| Category | Metrics |
-|----------|---------|
-| **LLM** | Time to First Token (TTFT) P50/P95/P99, tokens/sec, cost |
-| **STT** | Transcription latency, time to first partial transcript |
-| **TTS** | Time to First Audio Byte (TTFB), realtime factor |
-| **Pipeline** | Full STT→LLM→TTS end-to-end latency (the hero metric) |
+| Category     | Metrics                                                  |
+| ------------ | -------------------------------------------------------- |
+| **LLM**      | Time to First Token (TTFT) P50/P95/P99, tokens/sec, cost |
+| **STT**      | Transcription latency, time to first partial transcript  |
+| **TTS**      | Time to First Audio Byte (TTFB), realtime factor         |
+| **Pipeline** | Full STT→LLM→TTS end-to-end latency (the hero metric)    |
 
 All measurements use **real streaming requests** — latency is captured at the byte level.
 
@@ -29,7 +29,13 @@ All measurements use **real streaming requests** — latency is captured at the 
 ## Installation
 
 ```bash
-pip install modelping
+uv pip install modelping
+```
+
+Or run directly without installing:
+
+```bash
+uvx modelping run gpt-4o --runs 3
 ```
 
 Or install from source:
@@ -37,7 +43,7 @@ Or install from source:
 ```bash
 git clone https://github.com/LatencyGrid/modelping
 cd modelping
-pip install -e .
+uv sync
 ```
 
 ---
@@ -61,6 +67,49 @@ modelping stt
 # Benchmark TTS providers
 modelping tts
 ```
+
+---
+
+## Custom / Self-Hosted Servers
+
+Point modelping at **any** OpenAI-compatible inference server — local, self-hosted, or custom endpoints. No API keys needed.
+
+```bash
+# Benchmark a local vLLM / Ollama / TGI server
+modelping run gpt-4o \
+  --base-url http://24.84.229.106:8000 \
+  --model-id Meta-Llama-3.1-8B-Instruct \
+  --no-verify-ssl
+
+# STT against a local Whisper server
+modelping stt groq/whisper-large-v3 \
+  --base-url http://localhost:8080 \
+  --model-id whisper-large-v3 \
+  --no-verify-ssl
+
+# TTS against a local server
+modelping tts openai/tts-1 \
+  --base-url http://localhost:9000 \
+  --model-id kokoro \
+  --no-verify-ssl
+
+# Full pipeline against local infrastructure
+modelping pipeline \
+  --stt groq/whisper-large-v3 \
+  --llm gpt-4o-mini \
+  --tts cartesia/sonic-2 \
+  --base-url http://192.168.1.100:8000 \
+  --model-id my-custom-model \
+  --no-verify-ssl
+```
+
+| Flag              | Description                                                    |
+| ----------------- | -------------------------------------------------------------- |
+| `--base-url`      | Override the provider's API endpoint (e.g. `http://host:8000`) |
+| `--model-id`      | Override the model name sent to the server                     |
+| `--no-verify-ssl` | Skip TLS certificate verification (self-signed certs)          |
+
+When `--base-url` is set, API key checks are bypassed — you don't need any keys configured.
 
 ---
 
@@ -167,6 +216,12 @@ modelping pipeline --runs 3
 # List available models
 modelping models
 modelping models --provider anthropic
+
+# Custom / self-hosted servers (works with any command)
+modelping run gpt-4o --base-url http://24.84.229.106:8000 --model-id Meta-Llama-3.1-8B-Instruct --no-verify-ssl
+modelping stt groq/whisper-large-v3 --base-url http://localhost:8080 --model-id whisper-large-v3
+modelping tts openai/tts-1 --base-url http://localhost:9000 --model-id kokoro
+modelping pipeline --base-url http://192.168.1.100:8000 --model-id my-model --no-verify-ssl
 ```
 
 ---
@@ -175,55 +230,55 @@ modelping models --provider anthropic
 
 ### LLM
 
-| Model | Provider | Input $/1M | Output $/1M |
-|-------|----------|-----------|------------|
-| gpt-4o | openai | $2.50 | $10.00 |
-| gpt-4o-mini | openai | $0.15 | $0.60 |
-| o3-mini | openai | $1.10 | $4.40 |
-| claude-3-5-sonnet-20241022 | anthropic | $3.00 | $15.00 |
-| claude-3-haiku-20240307 | anthropic | $0.25 | $1.25 |
-| gemini-2.5-flash | google | $0.15 | $0.60 |
-| llama-3.3-70b-versatile | groq | $0.59 | $0.79 |
-| mixtral-8x7b-32768 | groq | $0.24 | $0.24 |
-| accounts/fireworks/models/llama-v3p1-70b-instruct | fireworks | $0.90 | $0.90 |
-| meta-llama/Llama-3.3-70B-Instruct-Turbo | together | $0.88 | $0.88 |
-| mistral-large-latest | mistral | $2.00 | $6.00 |
-| mistral-small-latest | mistral | $0.10 | $0.30 |
-| command-r-plus | cohere | $2.50 | $10.00 |
-| command-r | cohere | $0.15 | $0.60 |
+| Model                                             | Provider  | Input $/1M | Output $/1M |
+| ------------------------------------------------- | --------- | ---------- | ----------- |
+| gpt-4o                                            | openai    | $2.50      | $10.00      |
+| gpt-4o-mini                                       | openai    | $0.15      | $0.60       |
+| o3-mini                                           | openai    | $1.10      | $4.40       |
+| claude-3-5-sonnet-20241022                        | anthropic | $3.00      | $15.00      |
+| claude-3-haiku-20240307                           | anthropic | $0.25      | $1.25       |
+| gemini-2.5-flash                                  | google    | $0.15      | $0.60       |
+| llama-3.3-70b-versatile                           | groq      | $0.59      | $0.79       |
+| mixtral-8x7b-32768                                | groq      | $0.24      | $0.24       |
+| accounts/fireworks/models/llama-v3p1-70b-instruct | fireworks | $0.90      | $0.90       |
+| meta-llama/Llama-3.3-70B-Instruct-Turbo           | together  | $0.88      | $0.88       |
+| mistral-large-latest                              | mistral   | $2.00      | $6.00       |
+| mistral-small-latest                              | mistral   | $0.10      | $0.30       |
+| command-r-plus                                    | cohere    | $2.50      | $10.00      |
+| command-r                                         | cohere    | $0.15      | $0.60       |
 
 ### STT
 
-| Model | Provider |
-|-------|----------|
-| whisper-large-v3 | groq |
-| whisper-large-v3-turbo | groq |
-| distil-whisper-large-v3-en | groq |
-| whisper-1 | openai |
-| gpt-4o-transcribe | openai |
-| nova-2 | deepgram |
-| nova-3 | deepgram |
-| best | assemblyai |
-| nano | assemblyai |
-| (default) | gladia |
+| Model                      | Provider   |
+| -------------------------- | ---------- |
+| whisper-large-v3           | groq       |
+| whisper-large-v3-turbo     | groq       |
+| distil-whisper-large-v3-en | groq       |
+| whisper-1                  | openai     |
+| gpt-4o-transcribe          | openai     |
+| nova-2                     | deepgram   |
+| nova-3                     | deepgram   |
+| best                       | assemblyai |
+| nano                       | assemblyai |
+| (default)                  | gladia     |
 
 ### TTS
 
-| Model | Provider |
-|-------|----------|
-| eleven_flash_v2_5 | elevenlabs |
+| Model                  | Provider   |
+| ---------------------- | ---------- |
+| eleven_flash_v2_5      | elevenlabs |
 | eleven_multilingual_v2 | elevenlabs |
-| sonic-2 | cartesia |
-| sonic-english | cartesia |
-| tts-1 | openai |
-| tts-1-hd | openai |
-| (streaming) | fish-audio |
-| PlayDialog | playht |
-| Play3.0-mini | playht |
-| aura-asteria-en | deepgram |
-| aura-luna-en | deepgram |
-| blizzard | lmnt |
-| aurora | lmnt |
+| sonic-2                | cartesia   |
+| sonic-english          | cartesia   |
+| tts-1                  | openai     |
+| tts-1-hd               | openai     |
+| (streaming)            | fish-audio |
+| PlayDialog             | playht     |
+| Play3.0-mini           | playht     |
+| aura-asteria-en        | deepgram   |
+| aura-luna-en           | deepgram   |
+| blizzard               | lmnt       |
+| aurora                 | lmnt       |
 
 ---
 
@@ -269,7 +324,7 @@ name: AI Latency Check
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # every 6 hours
+    - cron: "0 */6 * * *" # every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -278,13 +333,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Install modelping
-        run: pip install modelping
+        run: uv pip install modelping --system
 
       - name: Run LLM latency benchmark
         env:
@@ -334,6 +387,7 @@ jobs:
 See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on adding a new provider.
 
 PRs welcome for:
+
 - New providers
 - New models / updated pricing
 - Output improvements
@@ -342,7 +396,7 @@ PRs welcome for:
 ```bash
 git clone https://github.com/LatencyGrid/modelping
 cd modelping
-pip install -e .
+uv sync
 ```
 
 ---
