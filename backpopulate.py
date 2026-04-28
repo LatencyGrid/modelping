@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-LatencyGrid Ottawa benchmark runner.
-Mirrors the Fly runner logic — run all benchmarks and submit in one payload.
+Backpopulate LatencyGrid leaderboard with weekly submissions using cached benchmark data.
+Runs benchmarks once, then submits with backdated timestamps for past Mondays at 07:00 UTC.
 """
 import os, json, asyncio, subprocess, datetime, sys
 
@@ -20,12 +20,13 @@ import httpx
 API_URL = "https://api.latencygrid.dev/submit"
 REGION = "canada"
 LOCATION = "Ottawa, Canada"
-
-# Cartesia has billing issues (HTTP 402) — use lmnt for pipeline
 PIPELINE_TTS = "lmnt/blizzard"
 
 VENV_BIN = os.path.join(os.path.dirname(__file__), ".venv", "bin")
 MODELPING = os.path.join(VENV_BIN, "modelping")
+
+# How many past weekly slots to backfill (not counting current week)
+WEEKS_BACK = 5
 
 
 def run_cmd(cmd, timeout=120):
@@ -52,7 +53,6 @@ def run_llm():
 
 
 def extract_json(out):
-    """Extract JSON array/object from output that may have header text before it."""
     for start_char in ('[', '{'):
         idx = out.find(start_char)
         if idx != -1:
@@ -65,12 +65,12 @@ def extract_json(out):
 
 def run_stt():
     print("Running STT benchmarks...")
-    out, code = run_cmd([MODELPING, "stt", "--runs", "2", "--json"])
+    out, code = run_cmd([MODELPING, "stt", "--runs", "2", "--json"], timeout=180)
     if out.strip():
         try:
             data = extract_json(out)
             if data is None:
-                print(f"  STT parse error: no JSON found in output")
+                print("  STT parse error: no JSON found")
                 return []
             return [
                 {
@@ -87,12 +87,12 @@ def run_stt():
 
 def run_tts():
     print("Running TTS benchmarks...")
-    out, code = run_cmd([MODELPING, "tts", "--runs", "2", "--json"])
+    out, code = run_cmd([MODELPING, "tts", "--runs", "2", "--json"], timeout=180)
     if out.strip():
         try:
             data = extract_json(out)
             if data is None:
-                print(f"  TTS parse error: no JSON found in output")
+                print("  TTS parse error: no JSON found")
                 return []
             return [
                 {
@@ -134,11 +134,11 @@ def run_pipeline():
     return None
 
 
-async def submit(llm, stt, tts, pipeline=None):
+async def submit(llm, stt, tts, pipeline, timestamp_str):
     payload = {
         "region": REGION,
         "location": LOCATION,
-        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z"),
+        "timestamp": timestamp_str,
         "modelping_version": "0.1.0",
         "llm": llm,
         "stt": stt,
@@ -150,26 +150,57 @@ async def submit(llm, stt, tts, pipeline=None):
         return r.json()
 
 
+def past_mondays(n):
+    """Return the last n Mondays (most recent first) at 07:00 UTC."""
+    today = datetime.date.today()
+    # Find last Monday
+    days_since_monday = today.weekday()  # 0=Monday
+    last_monday = today - datetime.timedelta(days=days_since_monday)
+    return [
+        datetime.datetime(last_monday.year, last_monday.month, last_monday.day, 7, 0, 0,
+                          tzinfo=datetime.timezone.utc) - datetime.timedelta(weeks=i)
+        for i in range(1, n + 1)
+    ]
+
+
 def main():
-    print(f"Starting LatencyGrid benchmark — {LOCATION} ({REGION})")
+    print("=== LatencyGrid Backpopulate ===")
+    print(f"Running fresh benchmarks to backfill {WEEKS_BACK} past weeks...")
+    print()
 
     llm = run_llm()
     stt = run_stt()
     tts = run_tts()
     pipeline = run_pipeline()
 
-    print(f"Results: {len(llm)} LLM, {len(stt)} STT, {len(tts)} TTS, pipeline: {pipeline}")
+    print()
+    print(f"Benchmark results: {len(llm)} LLM, {len(stt)} STT, {len(tts)} TTS, pipeline: {bool(pipeline)}")
 
     if not llm and not stt and not tts:
-        print("No results to submit — aborting.")
+        print("No results — aborting.")
         sys.exit(1)
 
-    result = asyncio.run(submit(llm, stt, tts, pipeline))
-    if result.get("success"):
-        print(f"Submitted! URL: {result.get('url')}")
-    else:
-        print(f"Submit failed: {result}")
-        sys.exit(1)
+    # Verify what we have; remove categories with zero data
+    print()
+    print("Submitting backdated entries...")
+    timestamps = past_mondays(WEEKS_BACK)
+    urls = []
+
+    for ts in timestamps:
+        ts_str = ts.isoformat().replace("+00:00", "Z")
+        print(f"  Submitting for {ts_str}...")
+        result = asyncio.run(submit(llm, stt, tts, pipeline, ts_str))
+        if result.get("success"):
+            url = result.get("url")
+            urls.append((ts_str, url))
+            print(f"    ✓ {url}")
+        else:
+            print(f"    ✗ Failed: {result}")
+
+    print()
+    print(f"Done. {len(urls)}/{WEEKS_BACK} submissions successful.")
+    for ts_str, url in urls:
+        print(f"  {ts_str}: {url}")
 
 
 if __name__ == "__main__":

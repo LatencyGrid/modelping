@@ -1,9 +1,7 @@
 name: Run Benchmarks
 
 on:
-  schedule:
-    - cron: '0 12 * * *'  # Every day at 10am UTC
-  workflow_dispatch:        # Manual trigger
+  workflow_dispatch:        # Manual trigger only (schedule paused permanently)
 
 jobs:
   benchmark-us-east:
